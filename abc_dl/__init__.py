@@ -38,7 +38,10 @@ def download_article(article_url, output_dir):
     article_meta = json.loads(article_data.find('script', {'type': 'application/ld+json'}).contents[0])
 
     _publish_time = article_data.find('meta', {'property': 'article:published_time'})['content'][:10].replace('-', '')
-    _authors = [author['name'] for author in article_meta['author']]
+    if(type(article_meta['author']) == list):
+        _authors = [author['name'] for author in article_meta['author']]
+    else:
+        _authors = ['ABC News']
     authorstr = '<p><i>By '
     for index,author in enumerate(_authors):
         authorstr += author
@@ -50,11 +53,12 @@ def download_article(article_url, output_dir):
 
     _title = article_meta['headline']
     header = article_data.find('div', {'data-component': 'FeatureMedia'})
-    _thumbnail = header.find('img')['data-src']
-    try:
-        _caption = f'{header.find("figcaption").contents[2]} {header.find("cite").text}'.strip()
-    except:
-        _caption = header.find('figcaption').text.strip()
+    if(header != None):
+        _thumbnail = header.find('img')['data-src']
+        try:
+            _caption = f'{header.find("figcaption").contents[2]} {header.find("cite").text}'.strip()
+        except:
+            _caption = header.find('figcaption').text.strip()
 
     _body = article_data.find('div', {'class': '_3b5Y5 _1BraJ'}).find('div')
 
@@ -66,8 +70,8 @@ def download_article(article_url, output_dir):
         os.mkdir(_outputfolder)
     else:
         sys.exit('This article has already been downloaded...')
-    
-    download_img(_thumbnail, 'thumb.webp', _outputfolder)
+    if(header != None):
+        download_img(_thumbnail, 'thumb.webp', _outputfolder)
 
     points = _body.find('section', {'aria-label': 'key points'})
     if(points != None):
@@ -90,12 +94,11 @@ def download_article(article_url, output_dir):
                 download_img(image['data-src'], imgtitle, _outputfolder)
                 element_tree.append(f'<img src="{imgtitle}">')
                 img_index += 1
-
-    dochtml = f'<html><head><title>{_title}</title></head><body><h1>{_title}</h1>{authorstr}<img src="thumb.webp"><p><i>{_caption}</i></p>'
-    try:
+    dochtml = f'<html><head><title>{_title}</title></head><body><h1>{_title}</h1>{authorstr}'
+    if(header != None):
+        dochtml += f'<img src="thumb.webp"><p><i>{_caption}</i></p>'
+    if(points != None):
         dochtml += f'<div id="key-points"><h3>Key Points</h3>{ul}</div>'
-    except:
-        pass
     for element in element_tree:
         dochtml += f'\n{element}'
     dochtml += '</body></html>'
@@ -103,6 +106,7 @@ def download_article(article_url, output_dir):
         print('Writing index.html...')
         f.write(dochtml)
         print('Download complete.')
+
 def download_img(url, title, output_dir):
     with open(output_dir + title, 'wb') as f:
         print(f'Downloading {url}...')
