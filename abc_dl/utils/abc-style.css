@@ -1,0 +1,50 @@
+@font-face {
+    font-family: 'abcsans';
+    src: url('abcsans-regular.otf');
+    font-weight: normal;
+}
+
+@font-face {
+    font-family: 'abcsans-bold';
+    src: url('abcsans-bold.otf');
+    font-weight: bold;
+}
+
+@font-face {
+    font-family: 'abcsans-black';
+    src: url('abcsans-black.otf');
+    font-weight: bolder;
+}
+
+html {
+    background: rgb(32,32,32);
+    color: rgb(230, 230, 230);
+}
+
+* {
+    font-family: abcsans;
+    margin: 0% 0% 0% 0%;
+    padding: 2% 12% 0% 12%;
+    transition: all 0.2s ease;
+}
+
+*,*:focus,*:hover{
+    outline:none;
+}
+
+h1 {
+    font-family: abcsans-black;
+}
+
+i, li {
+    padding: 0;
+}
+
+p {
+    font-size: 120%;
+}
+
+h3 {
+    font-size: 150%;
+    font-family: abcsans-bold;
+}

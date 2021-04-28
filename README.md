@@ -6,8 +6,6 @@ Archive ABC (Australian Broadcasting Corporation) News articles.
 
 - Add ability to download videos embedded in an article
 
-- Add global CSS file to style articles in a more visually appealing way
-
 - Make sure images are scaled correctly
 
 - Scrape the last time the article was updated

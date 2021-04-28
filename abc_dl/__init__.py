@@ -1,4 +1,4 @@
-import argparse, sys, os, hashlib, json, re
+import argparse, sys, os, hashlib, json, re, shutil, glob
 from requests import get
 from bs4 import BeautifulSoup
 
@@ -15,7 +15,7 @@ def main():
         sys.exit(USAGE_MSG)
     elif(args.output_dir[-1] == '"' or args.output_dir[-1] == "'"):
         args.output_dir = f'{args.output_dir[:-1]}/'
-    elif(args.output_dir[-1] != '/' or args.output_dir[-1] != '\\'):
+    elif(args.output_dir[-1] != '/' and args.output_dir[-1] != '\\'):
         args.output_dir += '/'
 
     if(not os.path.isdir(args.output_dir)):
@@ -24,6 +24,16 @@ def main():
         except:
             sys.exit(f'Could not create directory "{args.output_dir}"')
     
+    STYLING_DIR = f'{args.output_dir}styling/'
+    if(not os.path.isdir(STYLING_DIR)):
+        try:
+            os.mkdir(STYLING_DIR)
+            os.chdir(os.path.dirname(os.path.realpath(__file__)) + '/utils/')
+            for file in glob.glob('*'):
+                shutil.copy(os.path.realpath(file), STYLING_DIR)
+        except:
+            sys.exit(f'Could not create directory "{STYLING_DIR}"')
+
     if(args.purl):
         if(bool(re.match(VALID_URL, args.purl))):
             download_article(args.purl, args.output_dir)
@@ -65,7 +75,7 @@ def download_article(article_url, output_dir):
     hashed_title = f"{_publish_time} - {_title} [{hashlib.md5(_body.text.encode('utf-8')).hexdigest()[:6]}]"
     print(f'Downloading {hashed_title}...')
     _outputfolder = output_dir + f"{hashed_title}/"
-
+    
     if(not os.path.isdir(_outputfolder)):
         os.mkdir(_outputfolder)
     else:
@@ -94,7 +104,7 @@ def download_article(article_url, output_dir):
                 download_img(image['data-src'], imgtitle, _outputfolder)
                 element_tree.append(f'<img src="{imgtitle}">')
                 img_index += 1
-    dochtml = f'<html><head><title>{_title}</title></head><body><h1>{_title}</h1>{authorstr}'
+    dochtml = f'<html><head><link rel="stylesheet" href="../styling/abc-style.css"><title>{_title}</title></head><body><h1>{_title}</h1>{authorstr}'
     if(header != None):
         dochtml += f'<img src="thumb.webp"><p><i>{_caption}</i></p>'
     if(points != None):
