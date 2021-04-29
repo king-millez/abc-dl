@@ -3,7 +3,7 @@ from requests import get
 from bs4 import BeautifulSoup
 
 def main():
-    VALID_URL = r'https?://(?:www\.)?abc\.net\.au/news/(?:[^/]+/){2}?[0-9]{9}'
+    VALID_URL = r'https?://(?:www\.)?abc\.net\.au/news/((?:[^/]+/){1,2})?[0-9]{1,9}'
     USAGE_MSG = 'abc_dl [arguments] [article URL]'
     parser = argparse.ArgumentParser(description='Archive ABC (Australian Broadcasting Corporation) News articles.', usage=USAGE_MSG)
     parser.add_argument('-o', dest='output_dir', type=str, help='Output directory for downloaded content.')
