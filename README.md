@@ -8,6 +8,8 @@ Archive ABC (Australian Broadcasting Corporation) News articles.
 
 - Scrape the last time the article was updated
 
+- Add link to author's profile (when applicable)
+
 - Add support for older articles before the ABC's website upgrade, and support for articles written before the upgrade before that (they're very busy).
 
 ## Setup
