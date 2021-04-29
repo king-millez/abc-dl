@@ -64,7 +64,11 @@ def download_article(article_url, output_dir):
     _title = article_meta['headline']
     header = article_data.find('div', {'data-component': 'FeatureMedia'})
     if(header != None):
-        _thumbnail = header.find('img')['data-src']
+        vid = header.find('video')
+        if(vid == None):
+            _thumbnail = header.find('img')['data-src']
+        else:
+            _video = vid.find('source')['src']
         try:
             _caption = f'{header.find("figcaption").contents[2]} {header.find("cite").text}'.strip()
         except:
@@ -72,7 +76,7 @@ def download_article(article_url, output_dir):
 
     _body = article_data.find('div', {'class': '_3b5Y5 _1BraJ'}).find('div')
 
-    hashed_title = f"{_publish_time} - {_title} [{hashlib.md5(_body.text.encode('utf-8')).hexdigest()[:6]}]"
+    hashed_title = f"{_publish_time} - {_title.replace(':', '_')} [{hashlib.md5(_body.text.encode('utf-8')).hexdigest()[:6]}]"
     print(f'Downloading {hashed_title}...')
     _outputfolder = output_dir + f"{hashed_title}/"
     
@@ -81,7 +85,10 @@ def download_article(article_url, output_dir):
     else:
         sys.exit('This article has already been downloaded...')
     if(header != None):
-        download_img(_thumbnail, 'thumb.webp', _outputfolder)
+        if(vid == None):
+            download_img(_thumbnail, 'thumb.webp', _outputfolder)
+        else:
+            download_img(_video, 'thumb.mp4', _outputfolder)
 
     points = _body.find('section', {'aria-label': 'key points'})
     if(points != None):
@@ -92,21 +99,36 @@ def download_article(article_url, output_dir):
             ul += f'{point}'
     
     img_index = 1
+    vid_index = 1
     element_tree = []
     for element in _body:
         if('class' in element.attrs): # Without this, if an element doesn't have a class, the script will fail.
             if(element['class'] == ['_1HzXw']):
                 element_tree.append(f'<p>{element.text}</p>')
-                pass
             elif(element['class'] == ['_2w-Eq', '_1w6Cw', '_1pc-9', '_357jP']):
-                image = element.find('img')
-                imgtitle = f'{"{:02d}".format(img_index)}.webp'
-                download_img(image['data-src'], imgtitle, _outputfolder)
-                element_tree.append(f'<img src="{imgtitle}">')
-                img_index += 1
+                video_box = element.find('video')
+                if(video_box == None):
+                    image = element.find('img')
+                    imgtitle = f'{"{:02d}".format(img_index)}.webp'
+                    download_img(image['data-src'], imgtitle, _outputfolder)
+                    element_tree.append(f'<img src="{imgtitle}">')
+                    img_index += 1
+                else:
+                    vidtitle = f'{"{:02d}".format(vid_index)}.mp4'
+                    download_img(video_box.find('source')['src'], vidtitle, _outputfolder)
+                    element_tree.append(f'<video controls loop autoplay><source src="{vidtitle}" type="video/mp4"/></video>')
+                media_caption = element.find('figcaption')
+                if(media_caption != None):
+                    element_tree.append(f'<p><i>{media_caption.text.strip()}</i></p>')
+
     dochtml = f'<html><head><link rel="stylesheet" href="../styling/abc-style.css"><title>{_title}</title></head><body><h1>{_title}</h1>{authorstr}'
     if(header != None):
-        dochtml += f'<img src="thumb.webp"><p><i>{_caption}</i></p>'
+        if(vid == None):
+            dochtml += f'<img src="thumb.webp"><p><i>'
+        else:
+            dochtml += f'<video controls loop autoplay><source src="thumb.mp4" /></video>'
+        dochtml += f'<p><i>{_caption}</i></p>'
+
     if(points != None):
         dochtml += f'<div id="key-points"><h3>Key Points</h3>{ul}</div>'
     for element in element_tree:

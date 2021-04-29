@@ -4,8 +4,6 @@ Archive ABC (Australian Broadcasting Corporation) News articles.
 
 ## To do
 
-- Add ability to download videos embedded in an article
-
 - Make sure images are scaled correctly
 
 - Scrape the last time the article was updated
