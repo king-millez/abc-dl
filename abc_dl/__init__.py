@@ -76,7 +76,7 @@ def download_article(article_url, output_dir):
 
     _body = article_data.find('div', {'class': '_3b5Y5 _1BraJ'}).find('div')
 
-    hashed_title = f"{_publish_time} - {_title.replace(':', '_')} [{hashlib.md5(_body.text.encode('utf-8')).hexdigest()[:6]}]"
+    hashed_title = f"{_publish_time} - {_title.replace(':', '_').replace('?', '_')} [{hashlib.md5(_body.text.encode('utf-8')).hexdigest()[:6]}]"
     print(f'Downloading {hashed_title}...')
     _outputfolder = output_dir + f"{hashed_title}/"
     
