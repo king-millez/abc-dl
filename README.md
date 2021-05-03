@@ -40,6 +40,33 @@ Archive ABC (Australian Broadcasting Corporation) News articles.
     poetry update
     ```
 
+### FFmpeg for M3U8 stream downloads (optional)
+
+#### Linux/MacOS
+
+1. Follow instructions [here](https://ostechnix.com/install-ffmpeg-linux/) for your Linux distribution, or [here](http://ericholsinger.com/install-ffmpeg-on-a-mac) for MacOS.
+
+2. Verify installation by running:
+    ```sh
+    ffmpeg
+    ```
+    in your terminal.
+
+#### Windows
+
+1. Download [this](https://www.gyan.dev/ffmpeg/builds/ffmpeg-git-full.7z) file.
+
+2. Extract it using [7-zip](https://www.7-zip.org/).
+
+3. Navigate to `bin` in the extracted contents:
+    ![Extracted 7-zip folder](/.github/img/setup/1.PNG)
+    ![Extracted bin folder](/.github/img/setup/2.PNG)
+4. Copy `ffmpeg.exe` to a folder you'd like to use, or keep it where it is, it doesn't really matter.
+5. Press the *Windows* key on your keyboard, and search for "*environment variables*", open "*Edit the system environment variables*".
+    ![Extracted 7-zip folder](/.github/img/setup/3.png)
+6. Click "*Environment Variables*", select the "*PATH*" variable, and click "*Edit*".
+7. Click "*New*", and then enter the path to the folder where `ffmpeg.exe` is located. (e.g `C:\Users\Millez\ffmpeg`).
+8. Test if you've done this correctly by opening a CMD or PowerShell window and running `ffmpeg.exe`
 ## Usage
 
 1. Go find an article to download, copy its URL (e.g: [this one](https://www.abc.net.au/news/2021-04-28/super-pink-moon-shines-across-australia/100099278)).
