@@ -4,14 +4,14 @@ from bs4 import BeautifulSoup
 
 NEWS = 'abcnews'
 TRIPLEJ = 'likeaversion'
-HAS_FFMPEG = None
+FFMPEG = None
 
 if(sys.platform == 'win32'):
     if(shutil.which('ffmpeg.exe') is not None):
         FFMPEG = 'ffmpeg.exe'
 else:
     if(shutil.which('ffmpeg') is not None):
-        HAS_FFMPEG = 'ffmpeg'
+        FFMPEG = 'ffmpeg'
 
 def main():
     VALID_URLS = {NEWS : r'https?://(?:www\.)?abc\.net\.au/news/(?:[^/]*/){0,}?[0-9]{1,9}',
