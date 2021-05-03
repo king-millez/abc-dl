@@ -59,11 +59,17 @@ Archive ABC (Australian Broadcasting Corporation) News articles.
 2. Extract it using [7-zip](https://www.7-zip.org/).
 
 3. Navigate to `bin` in the extracted contents:
+
     ![Extracted 7-zip folder](/.github/img/setup/1.PNG)
+
     ![Extracted bin folder](/.github/img/setup/2.PNG)
+
 4. Copy `ffmpeg.exe` to a folder you'd like to use, or keep it where it is, it doesn't really matter.
+
 5. Press the *Windows* key on your keyboard, and search for "*environment variables*", open "*Edit the system environment variables*".
+
     ![Extracted 7-zip folder](/.github/img/setup/3.png)
+
 6. Click "*Environment Variables*", select the "*PATH*" variable, and click "*Edit*".
 7. Click "*New*", and then enter the path to the folder where `ffmpeg.exe` is located. (e.g `C:\Users\Millez\ffmpeg`).
 8. Test if you've done this correctly by opening a CMD or PowerShell window and running `ffmpeg.exe`
@@ -78,6 +84,7 @@ Archive ABC (Australian Broadcasting Corporation) News articles.
 This will output a directory with the title of the article and the first 6 characters of its unique MD5 hash, so if the article is updated you'll be able to save multiple versions without conflicts.
 
 ![Screenshot of folder](/.github/img/1.PNG)
+
 ![Screenshot of inside folder](/.github/img/2.PNG)
 
 Open `index.html` in a browser to view the offline, compressed article:
