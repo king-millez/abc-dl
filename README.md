@@ -2,6 +2,15 @@
 
 Archive ABC (Australian Broadcasting Corporation) News articles.
 
+## Supported Article Types
+
+- ABC News
+    - Standard articles
+- Triple J
+  - Like a Version
+  - Shows (e.g *Breakfast*, *Hack*, etc)
+  - Triple J News
+
 ## To do
 
 - Make sure images are scaled correctly

@@ -48,3 +48,11 @@ h3 {
     font-size: 150%;
     font-family: abcsans-bold;
 }
+
+video {
+    width: 90%;
+}
+
+img {
+    max-width: 90%;
+}
