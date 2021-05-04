@@ -6,6 +6,9 @@ Archive ABC (Australian Broadcasting Corporation) News articles.
 
 - ABC News
     - Standard articles
+- ABC Listen (Podcasts)
+    - Single episodes
+    - Entire playlists (e.g [https://abc.net.au/radio/programs/the-eleventh/](https://abc.net.au/radio/programs/the-eleventh/))
 - Triple J
   - Like a Version
   - Shows (e.g *Breakfast*, *Hack*, etc)

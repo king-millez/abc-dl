@@ -5,6 +5,7 @@ from bs4 import BeautifulSoup
 NEWS = 'abcnews'
 TRIPLEJ = 'likeaversion'
 FFMPEG = None
+RADIO = 'radio'
 
 if(sys.platform == 'win32'):
     if(shutil.which('ffmpeg.exe') is not None):
@@ -15,7 +16,8 @@ else:
 
 def main():
     VALID_URLS = {NEWS : r'https?://(?:www\.)?abc\.net\.au/news/(?:[^/]*/){0,}?[0-9]{1,9}',
-    TRIPLEJ : r'https?://(?:www\.)?abc\.net\.au/triplej/(?:[^/]*/){0,}?[0-9]{1,9}'}
+    TRIPLEJ : r'https?://(?:www\.)?abc\.net\.au/triplej/(?:[^/]*/){0,}?[0-9]{1,9}',
+    RADIO: r'https?://(?:www\.)?abc\.net\.au/radio/programs/(?:[^/]*/){0,}?'}
     USAGE_MSG = 'abc_dl [arguments] [article URL]'
     parser = argparse.ArgumentParser(description='Archive ABC (Australian Broadcasting Corporation) News articles.', usage=USAGE_MSG)
     parser.add_argument('-o', dest='output_dir', type=str, help='Output directory for downloaded content.')
@@ -159,76 +161,103 @@ def download_article(article_url, output_dir, article_type):
         hashed_title = gen_hash_title(_publish_time, _title, _body)
         print(f'Downloading {hashed_title}...')
         _outputfolder = output_dir + f"{hashed_title}/"
-        check_output_dir(_outputfolder)
-        thumb_content = _body.find('div', {'class': 'img-cont'})
-        if(thumb_content.find('script') != None):
-            audio_div = _body.find('div', {'id': 'audioPlayerWithDownload5'})
-            if(audio_div != None):
-                try:
-                    _thumb_audio = audio_div.find('a')['href']
-                except:
-                    if(FFMPEG):
-                        m3u8_url = triplej.find_m3u8_url(audio_div)
-                        m3u8_status = get(m3u8_url).status_code == 200
-                        if(m3u8_status):
-                            subprocess.run([FFMPEG, '-i', m3u8_url, '-acodec', 'mp3', f'{_outputfolder}thumb.mp3'])
+        if(not check_output_dir(_outputfolder)):
+            thumb_content = _body.find('div', {'class': 'img-cont'})
+            if(thumb_content.find('script') != None):
+                audio_div = _body.find('div', {'id': 'audioPlayerWithDownload5'})
+                if(audio_div != None):
+                    try:
+                        _thumb_audio = audio_div.find('a')['href']
+                    except:
+                        if(FFMPEG):
+                            m3u8_url = triplej.find_m3u8_url(audio_div)
+                            m3u8_status = get(m3u8_url).status_code == 200
+                            if(m3u8_status):
+                                subprocess.run([FFMPEG, '-i', m3u8_url, '-acodec', 'mp3', f'{_outputfolder}thumb.mp3'])
+                            else:
+                                print('Article audio has expired, using placeholder instead.')
+                                _thumb_audio = 'https://www.soundboardguy.com/wp-content/uploads/2021/04/bitconnect.mp3'
                         else:
-                            print('Article audio has expired, using placeholder instead.')
+                            print('This article uses an M3U8 stream to serve its audio, please install ffmpeg in your PATH to download it.')
                             _thumb_audio = 'https://www.soundboardguy.com/wp-content/uploads/2021/04/bitconnect.mp3'
-                    else:
-                        print('This article uses an M3U8 stream to serve its audio, please install ffmpeg in your PATH to download it.')
-                        _thumb_audio = 'https://www.soundboardguy.com/wp-content/uploads/2021/04/bitconnect.mp3'
-            else:
-                _thumb_video = triplej.find_video_url(thumb_content)
-        else:
-            _thumb_img = thumb_content.find('img')['src'].replace('thumbnail', 'large')
-
-        article_content = _body.find('div', {'class': 'comp-rich-text article-text clearfix'}).findChildren(recursive=False)
-
-        vid_index = 1
-        img_index = 1
-        element_tree = []
-        if(thumb_content.find('script') != None):
-            if(audio_div == None):
-                download_file(_thumb_video, 'thumb.mp4', _outputfolder)
-                dochtml += '<video controls loop autoplay><source src="thumb.mp4" /></video>'
-            else:
-                dochtml += '<audio controls loop autoplay><source src="thumb.mp3" /></audio>'
-                if(not m3u8_status):
-                    download_file(_thumb_audio, 'thumb.mp3', _outputfolder)
-        else:
-            download_file(_thumb_img, 'thumb.jpg', _outputfolder)
-            dochtml += '<img src="thumb.jpg" >'
-        for element in article_content:
-            if('class' in element.attrs):
-                if(element['class'] == ['view-embed-full']):
-                    continue # Skip related article
-                elif(element['class'] == ['view-inlineMediaPlayer', 'doctype-abcvideo']):
-                    vid_title = f'{"{:02d}".format(vid_index)}.mp4'
-                    download_file(triplej.find_video_url(element), vid_title, _outputfolder)
-                    element_tree.append(f'<video controls autoplay loop><source src="{vid_title}" /></video>')
-                    vid_index += 1
-                elif(element['class'] == ['comp-rich-text-blockquote', 'comp-embedded-float-full', 'source-blockquote']):
-                    element_tree.append(f'<p><i>{element.text.strip()}</i></p>')
-                elif(element['class'] == ['view-image-embed-full']):
-                    img_title = f'{"{:02d}".format(img_index)}.jpg'
-                    element_tree.append(f'<img src="{img_title}">')
-                    download_file(element.find('img')['src'].replace('thumbnail', 'large'), img_title, _outputfolder)
-                    img_index += 1
-            else:
-                if(element.name == 'ul' or element.name == 'ol'):
-                    ulhtml = '<ul>'
-                    ul = [f'<li>{li.text.strip()}</li>' for li in element.find_all('li')]
-                    for list_item in ul:
-                        ulhtml += list_item
-                    ulhtml += '</ul>'
-                    element_tree.append(ulhtml)
                 else:
-                    element_tree.append(f'<{element.name}>{element.text}</{element.name}>')
-        for element in element_tree:
-            dochtml += element
-        dochtml += '</body></html>'
-        write_index(_outputfolder, dochtml)
+                    _thumb_video = triplej.find_video_url(thumb_content)
+            else:
+                _thumb_img = thumb_content.find('img')['src'].replace('thumbnail', 'large')
+
+            article_content = _body.find('div', {'class': 'comp-rich-text article-text clearfix'}).findChildren(recursive=False)
+
+            vid_index = 1
+            img_index = 1
+            element_tree = []
+            if(thumb_content.find('script') != None):
+                if(audio_div == None):
+                    download_file(_thumb_video, 'thumb.mp4', _outputfolder)
+                    dochtml += '<video controls loop autoplay><source src="thumb.mp4" /></video>'
+                else:
+                    dochtml += '<audio controls loop autoplay><source src="thumb.mp3" /></audio>'
+                    if(not m3u8_status):
+                        download_file(_thumb_audio, 'thumb.mp3', _outputfolder)
+            else:
+                download_file(_thumb_img, 'thumb.jpg', _outputfolder)
+                dochtml += '<img src="thumb.jpg" >'
+            for element in article_content:
+                if('class' in element.attrs):
+                    if(element['class'] == ['view-embed-full']):
+                        continue # Skip related article
+                    elif(element['class'] == ['view-inlineMediaPlayer', 'doctype-abcvideo']):
+                        vid_title = f'{"{:02d}".format(vid_index)}.mp4'
+                        download_file(triplej.find_video_url(element), vid_title, _outputfolder)
+                        element_tree.append(f'<video controls autoplay loop><source src="{vid_title}" /></video>')
+                        vid_index += 1
+                    elif(element['class'] == ['comp-rich-text-blockquote', 'comp-embedded-float-full', 'source-blockquote']):
+                        element_tree.append(f'<p><i>{element.text.strip()}</i></p>')
+                    elif(element['class'] == ['view-image-embed-full']):
+                        img_title = f'{"{:02d}".format(img_index)}.jpg'
+                        element_tree.append(f'<img src="{img_title}">')
+                        download_file(element.find('img')['src'].replace('thumbnail', 'large'), img_title, _outputfolder)
+                        img_index += 1
+                else:
+                    if(element.name == 'ul' or element.name == 'ol'):
+                        ulhtml = '<ul>'
+                        ul = [f'<li>{li.text.strip()}</li>' for li in element.find_all('li')]
+                        for list_item in ul:
+                            ulhtml += list_item
+                        ulhtml += '</ul>'
+                        element_tree.append(ulhtml)
+                    else:
+                        element_tree.append(f'<{element.name}>{element.text}</{element.name}>')
+            for element in element_tree:
+                dochtml += element
+            dochtml += '</body></html>'
+            write_index(_outputfolder, dochtml)
+    elif(article_type == RADIO):
+        article_content = BeautifulSoup(get(article_url).text, 'lxml')
+        check_playlist = article_content.find('div', {'id': 'collection-program-extras6'})
+        if(check_playlist != None):
+            for program in check_playlist.find('ul').find_all('li'):
+                download_article('https://abc.net.au' + program.find('a')['href'], output_dir, RADIO)
+        else:
+            _title = article_content.find('h1', {'itemprop': 'name'}).text
+            dochtml = f'<html><head><title>{_title}</title><link rel="stylesheet" href="../styling/abc-style.css"></head><body>'
+            dochtml += f'<h1>{_title}</h1>'
+            thumb = article_content.find('div', {'id': 'audioPlayerWithDownload4'})
+            _program_audio = thumb.find('a')['href']
+            _thumb_img = thumb.find('img')['src'].replace('thumbnail', 'large')
+            hashed_title = gen_hash_title(create_date(article_content.find('meta', {'name': 'DCTERMS.date'})['content']), _title, article_content)
+            _outputfolder = output_dir + f"{hashed_title}/"
+            if(not check_output_dir(_outputfolder)):
+                dochtml += '<img src="thumb.jpg">'
+                dochtml += '<audio controls autoplay loop><source src="thumb.mp3"></audio>'
+
+                _article_description = article_content.find('div', {'id': 'comp-rich-text7'})
+                text_tree = [text for text in _article_description.contents[1:-1]]
+                for text in text_tree:
+                    dochtml += str(text)
+                dochtml += '</body><html>'
+                download_file(_program_audio, 'thumb.mp3', _outputfolder)
+                download_file(_thumb_img, 'thumb.jpg', _outputfolder)
+                write_index(_outputfolder, dochtml)
 
 def gen_hash_title(published_time, article_title, html):
     escaped_title = article_title.replace(':', '_').replace('?', '_').replace('/', '_').replace('<', '_').replace('>', '_').replace('*', '_').replace('|', '_').replace('\\', '_').replace('"', "'")
@@ -236,9 +265,11 @@ def gen_hash_title(published_time, article_title, html):
 
 def check_output_dir(dir_path):
     if(not os.path.isdir(dir_path)):
-            os.mkdir(dir_path)
+        os.mkdir(dir_path)
+        return False
     else:
-        sys.exit('This article has already been downloaded...')
+        print('This article has already been downloaded...')
+        return True
 
 def create_date(datestr):
     return datestr[:10].replace('-', '')

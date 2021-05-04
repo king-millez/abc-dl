@@ -56,3 +56,17 @@ video {
 img {
     max-width: 90%;
 }
+
+a {
+    text-decoration: none;
+    text-decoration: underline;
+    color: #00cec9;
+}
+
+a:hover {
+    color: #0984e3;
+}
+
+p a {
+    padding: 0;
+}
