@@ -67,6 +67,6 @@ a:hover {
     color: #0984e3;
 }
 
-p a {
+p a, strong, em {
     padding: 0;
 }

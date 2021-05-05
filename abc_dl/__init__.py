@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 NEWS = 'abcnews'
 TRIPLEJ = 'likeaversion'
 FFMPEG = None
-RADIO = 'radio'
+LISTEN = 'listen'
 
 if(sys.platform == 'win32'):
     if(shutil.which('ffmpeg.exe') is not None):
@@ -17,7 +17,7 @@ else:
 def main():
     VALID_URLS = {NEWS : r'https?://(?:www\.)?abc\.net\.au/news/(?:[^/]*/){0,}?[0-9]{1,9}',
     TRIPLEJ : r'https?://(?:www\.)?abc\.net\.au/triplej/(?:[^/]*/){0,}?[0-9]{1,9}',
-    RADIO: r'https?://(?:www\.)?abc\.net\.au/radio/programs/(?:[^/]*/){0,}?'}
+    LISTEN: r'https?://(?:www\.)?abc\.net\.au/radio(?:national)?/programs/(?:[^/]*/){0,}?'}
     USAGE_MSG = 'abc_dl [arguments] [article URL]'
     parser = argparse.ArgumentParser(description='Archive ABC (Australian Broadcasting Corporation) News articles.', usage=USAGE_MSG)
     parser.add_argument('-o', dest='output_dir', type=str, help='Output directory for downloaded content.')
@@ -231,26 +231,74 @@ def download_article(article_url, output_dir, article_type):
                 dochtml += element
             dochtml += '</body></html>'
             write_index(_outputfolder, dochtml)
-    elif(article_type == RADIO):
+    elif(article_type == LISTEN):
+        def podcast_list(divcontent):
+            return divcontent.find('div', {'class': 'view-collection-grid-variable-placed doctype-abcdyncollection'}).find('div', {'class': 'row'}).find_all('div', {'class': 'col-sm-4'})
         article_content = BeautifulSoup(get(article_url).text, 'lxml')
         check_playlist = article_content.find('div', {'id': 'collection-program-extras6'})
+        check_progress = article_content.find('div', {'class': 'paginate-controls'})
+        current_playlist = article_content.find('div', {'class': 'view-collection-grid-variable view-collection-grid doctype-abcdyncollection'})
         if(check_playlist != None):
             for program in check_playlist.find('ul').find_all('li'):
-                download_article('https://abc.net.au' + program.find('a')['href'], output_dir, RADIO)
+                download_article('https://abc.net.au' + program.find('a')['href'], output_dir, LISTEN)
+        elif(check_progress != None):
+            def download_list(url):
+                retlist = []
+                list_content = BeautifulSoup(get(url).text, 'lxml')
+                latest_ep = list_content.find('div', {'class': 'view-program-latest-episode'})
+                if(latest_ep != None):
+                    retlist.append('https://abc.net.au' + latest_ep.find('a')['href'])
+                for article in podcast_list(list_content):
+                    retlist.append('https://abc.net.au' + article.find('a')['href'])
+                return retlist
+            
+            more_pages = True
+            _nextpage_index = 1
+            podcast_list = []
+            while more_pages == True:
+                if(bool(re.match(r'\?page=[0-9]{1,}', article_url[-7:]))):
+                    _base_url = article_url[:-7]
+                else:
+                    _base_url = article_url
+                newlist = download_list(_base_url + f'?page={_nextpage_index}')
+                if(_nextpage_index == 1):
+                    _base_list = newlist[1:]
+                if(newlist == _base_list):
+                    break
+                elif(newlist != None):
+                    podcast_list += newlist
+                    _nextpage_index += 1
+                else:
+                    break
+            for podcast in podcast_list:
+                download_article(podcast, output_dir, article_type)
+        elif(current_playlist != None):
+            for podcast in podcast_list(article_content):
+                download_article('https://abc.net.au' + podcast.find('a')['href'], output_dir, article_type)
+                
         else:
             _title = article_content.find('h1', {'itemprop': 'name'}).text
+            hashed_title = gen_hash_title(create_date(article_content.find('meta', {'name': 'DCTERMS.date'})['content']), _title, article_content)
+            print(f'Downloading {hashed_title}...')
             dochtml = f'<html><head><title>{_title}</title><link rel="stylesheet" href="../styling/abc-style.css"></head><body>'
             dochtml += f'<h1>{_title}</h1>'
             thumb = article_content.find('div', {'id': 'audioPlayerWithDownload4'})
-            _program_audio = thumb.find('a')['href']
-            _thumb_img = thumb.find('img')['src'].replace('thumbnail', 'large')
-            hashed_title = gen_hash_title(create_date(article_content.find('meta', {'name': 'DCTERMS.date'})['content']), _title, article_content)
+            if(thumb != None):
+                _program_audio = thumb.find('a')['href']
+                _thumb_img = thumb.find('img')['src'].replace('thumbnail', 'large')
+            else:
+                thumb = article_content.find('div', {'class': 'component comp-image'})
+                _thumb_img = thumb.find('img')['src'].replace('thumbnail', 'large')
+                print('Article audio has expired, using placeholder instead.')
+                _program_audio = 'https://www.soundboardguy.com/wp-content/uploads/2021/04/bitconnect.mp3'
             _outputfolder = output_dir + f"{hashed_title}/"
             if(not check_output_dir(_outputfolder)):
                 dochtml += '<img src="thumb.jpg">'
                 dochtml += '<audio controls autoplay loop><source src="thumb.mp3"></audio>'
 
                 _article_description = article_content.find('div', {'id': 'comp-rich-text7'})
+                if(_article_description == None):
+                    _article_description = article_content.find('div', {'id': 'comp-rich-text8'})
                 text_tree = [text for text in _article_description.contents[1:-1]]
                 for text in text_tree:
                     dochtml += str(text)
