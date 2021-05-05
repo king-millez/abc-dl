@@ -6,6 +6,7 @@ NEWS = 'abcnews'
 TRIPLEJ = 'likeaversion'
 FFMPEG = None
 LISTEN = 'listen'
+RADIO = 'radio'
 
 if(sys.platform == 'win32'):
     if(shutil.which('ffmpeg.exe') is not None):
@@ -17,7 +18,8 @@ else:
 def main():
     VALID_URLS = {NEWS : r'https?://(?:www\.)?abc\.net\.au/news/(?:[^/]*/){0,}?[0-9]{1,9}',
     TRIPLEJ : r'https?://(?:www\.)?abc\.net\.au/triplej/(?:[^/]*/){0,}?[0-9]{1,9}',
-    LISTEN: r'https?://(?:www\.)?abc\.net\.au/radio(?:national)?/programs/(?:[^/]*/){0,}?'}
+    LISTEN: r'https?://(?:www\.)?abc\.net\.au/radio(?:national)?/programs/(?:[^/]*/){0,}?',
+    RADIO: r'https?://(?:www\.)?abc\.net\.au/radio/(?:[^/]*/){0,}?programs/(?:[^/]*/){0,}?[0-9]{1,9}'}
     USAGE_MSG = 'abc_dl [arguments] [article URL]'
     parser = argparse.ArgumentParser(description='Archive ABC (Australian Broadcasting Corporation) News articles.', usage=USAGE_MSG)
     parser.add_argument('-o', dest='output_dir', type=str, help='Output directory for downloaded content.')
@@ -156,7 +158,7 @@ def download_article(article_url, output_dir, article_type):
         header = article_data.find('head')
         _title = header.find('meta', {'name': 'title'})['content']
         dochtml = f'<html><head><title>{_title}</title><link rel="stylesheet" href="../styling/abc-style.css"></head><body><h1>{_title}</h1>'
-        _publish_time = create_date(header.find('meta', {'name': 'DCTERMS.date'})['content'])
+        _publish_time = get_date(article_data)
         _body = article_data.find('body')
         hashed_title = gen_hash_title(_publish_time, _title, _body)
         print(f'Downloading {hashed_title}...')
@@ -277,8 +279,8 @@ def download_article(article_url, output_dir, article_type):
                 download_article('https://abc.net.au' + podcast.find('a')['href'], output_dir, article_type)
                 
         else:
-            _title = article_content.find('h1', {'itemprop': 'name'}).text
-            hashed_title = gen_hash_title(create_date(article_content.find('meta', {'name': 'DCTERMS.date'})['content']), _title, article_content)
+            _title = get_title(article_content)
+            hashed_title = gen_hash_title(get_date(article_content), _title, article_content)
             print(f'Downloading {hashed_title}...')
             dochtml = f'<html><head><title>{_title}</title><link rel="stylesheet" href="../styling/abc-style.css"></head><body>'
             dochtml += f'<h1>{_title}</h1>'
@@ -287,10 +289,13 @@ def download_article(article_url, output_dir, article_type):
                 _program_audio = thumb.find('a')['href']
                 _thumb_img = thumb.find('img')['src'].replace('thumbnail', 'large')
             else:
-                thumb = article_content.find('div', {'class': 'component comp-image'})
-                _thumb_img = thumb.find('img')['src'].replace('thumbnail', 'large')
-                print('Article audio has expired, using placeholder instead.')
-                _program_audio = 'https://www.soundboardguy.com/wp-content/uploads/2021/04/bitconnect.mp3'
+                thumb = article_content.find('div', {'id': 'audioPlayerWithDownload5'})
+                if(thumb != None):
+                    _thumb_img = thumb.find('img')['src'].replace('thumbnail', 'large')
+                    _program_audio = thumb.find('a')['href']
+                else:
+                    print('Article audio has expired, using placeholder instead.')
+                    _program_audio = 'https://www.soundboardguy.com/wp-content/uploads/2021/04/bitconnect.mp3'
             _outputfolder = output_dir + f"{hashed_title}/"
             if(not check_output_dir(_outputfolder)):
                 dochtml += '<img src="thumb.jpg">'
@@ -306,6 +311,44 @@ def download_article(article_url, output_dir, article_type):
                 download_file(_program_audio, 'thumb.mp3', _outputfolder)
                 download_file(_thumb_img, 'thumb.jpg', _outputfolder)
                 write_index(_outputfolder, dochtml)
+    elif(article_type == RADIO):
+        article_content = article_data.find('div', {'id': 'comp-rich-text9'})
+        if(article_content == None):
+            download_article(article_url, output_dir, LISTEN) # These radio pages follow the same format as the podcast pages
+        else:
+            _title = get_title(article_data)
+            _date = get_date(article_data)
+            hashed_title = gen_hash_title(_date, _title, article_data)
+            _outputfolder = output_dir + f"{hashed_title}/"
+            if(not check_output_dir(_outputfolder)):
+                dochtml = f'<html><head><title>{_title}</title><link rel="stylesheet" href="../styling/abc-style.css"></head><body><h1>{_title}</h1>'
+                thumb_area = article_data.find('div', {'class': 'view-audioPlayerWithDownload print-hide doctype-abcaudiosegment'})
+                if(thumb_area != None):
+                    _thumb_audio = thumb_area.find('a')['href']
+                    dochtml += '<audio controls loop autoplay><source src="thumb.mp3" /></audio>'
+                    download_file(_thumb_audio, 'thumb.mp3', _outputfolder)
+                    _thumb_img = thumb_area.find('img')['src'].replace('thumbnail', 'large')
+                    dochtml += '<img src="thumb.jpg">'
+                    download_file(_thumb_img, 'thumb.jpg', _outputfolder)                
+                    element_tree = []
+                    img_index = 1
+                    for element in article_content.findChildren(recursive=False):
+                        if(element.name == 'img'):
+                            imgtitle = f'{"{:02d}".format(img_index)}.jpg'
+                            download_file(element['src'].replace('thumbnail', 'large'), imgtitle, _outputfolder)
+                            element_tree.append(f'<img src="{imgtitle}">')
+                        else:
+                            element_tree.append(f'<{element.name}>{element.text.strip()}</{element.name}>')
+                    for element in element_tree:
+                        dochtml += element
+                    dochtml += '</body></html>'
+                    write_index(_outputfolder, dochtml)
+
+def get_title(html):
+    return html.find('h1', {'itemprop': 'name'}).text   
+
+def get_date(html):
+    return create_date(html.find('meta', {'name': 'DCTERMS.date'})['content'])
 
 def gen_hash_title(published_time, article_title, html):
     escaped_title = article_title.replace(':', '_').replace('?', '_').replace('/', '_').replace('<', '_').replace('>', '_').replace('*', '_').replace('|', '_').replace('\\', '_').replace('"', "'")
